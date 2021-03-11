@@ -1,7 +1,7 @@
 ---
 title: "Polymorphic Records in Ecto"
 date: 2021-03-01T12:25:10-07:00
-draft: false
+draft: true
 ---
 
 How often has this happened to you? You are using a SQL database and need to model a collection of conceptually similar items that all have a slightly different shape? Let's give a concrete example. You are implementing an activity feed for the hottest Fintech startup in the valley. In this feed you want to show a list of user transactions - things such as deposits, transfers, card transactions, and interest earned events.
