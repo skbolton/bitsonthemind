@@ -1,31 +1,35 @@
 ---
 title: "Polymorphic Records in Ecto"
-date: 2021-03-01T12:25:10-07:00
+date: 2021-03-15T12:25:10-07:00
 draft: true
 ---
 
+Parameterized types landed in Ecto [3.5](https://twitter.com/josevalim/status/1300448536681684992?ref_src=twsrc%5Etfw%7Ctwcamp%5Etweetembed%7Ctwterm%5E1300448536681684992%7Ctwgr%5E%7Ctwcon%5Es1_c10&ref_url=https%3A%2F%2Fpublish.twitter.com%2F%3Fquery%3Dhttps3A2F2Ftwitter.com2Fjosevalim2Fstatus2F1300448536681684992widget%3DTweet) and with them some new magical powers for us alchemists. My favorite being polymorphic types. What are polymorphic types you ask?
+
 How often has this happened to you? You are using a SQL database and need to model a collection of conceptually similar items that all have a slightly different shape? Let's give a concrete example. You are implementing an activity feed for the hottest Fintech startup in the valley. In this feed you want to show a list of user transactions - things such as deposits, transfers, card transactions, and interest earned events.
 
-It's tempting to want to group these things together and call them "transactions". While they represent a financial transaction, each one has unique details to it. On a card transaction you would expect to see merchant details. On interest earned events there would be, well, interest earned percentages.
+It's tempting to want to group these things together and call them "transactions". While they represent a financial transaction, each one has unique details to it. On a card transaction you would expect to see merchant details. On interest earned events there would be, well, interest earned amounts.
 
 ## Goals and Requirements
 
 Before we dive into the code lets fully flesh out the requirements so that we can build our solution around them. 
 
-* SQL is our datastore
+* We are using a SQL database that supports maps - I'll be assuming Postgres
 * Querying the transaction feed is performant and scalable
 * Each transaction line item has its own enforceable schema
-* New activity items can be added to the feed without needing changes to the database
+* New activity items can be added to the feed without needing changes to the database or hurting performance
 * Use the Ecto patterns we already know and love
 * Use Elixir - No trade offs here :)
 
-> There are always trade offs and other ways of implementing this. These will be discussed at the end of the article.
+> There are always tradeoffs and alternatives - I'll discuss those briefly at the end.
 
 ## Table for one please
 
-To start our adventure we will need to create a schema for our database table. This one table is where all of our records will be stored. For all the fields we can confidently say will be on every record we will make columns. For all other fields we will have to store them as a json map.
+To start our adventure we will need to create a schema for our database table. This one table will house all of our transaction records. For all the fields we can confidently say will be on every record we will make columns. For all other fields we will use our polymorphic type.
 
-We don't want to be too aggressive on deciding what fields are shared between all records since we want to support unknown transaction types down the road. It feels safe to assume every transaction would have an amount so lets just go with that. We also want to make sure that we can define what all the possible types are. For this we will define an enum to hold that value.
+We don't want to be too aggressive on deciding what fields are shared between all records since we want to support unknown transaction types down the road. It feels safe to assume every transaction would have an amount so lets just go with that. 
+
+Next, we need a way to have a field that can be any one of our transaction types. We could just define it as a `:map` and call it a day but there are some issues with that. For one, our unique transaction types are not just loose key value pairs. They probably have some sort of schema, just not one we can enforce at the database level. Instead we will define a polymorphic type.
 
 {{< code language="elixir" >}}
 defmodule TransactionFeedItem do
@@ -33,302 +37,161 @@ defmodule TransactionFeedItem do
   alias Ecto.Changeset
   
   schema "transaction_feed_items" do
-    # define our transaction types
-    field :type, Ecto.Enum, values: [:deposit, :interest_earned]
     # shared fields
     field :amount, :decimal
-    # unique to every transaction type
-    field :data, :map
+    # polymorphic field
+    field :data, PolymorphicType, interest: InterestEarnedTransaction, card: CardTransaction
+  end
+  
+  def changeset(%__MODULE__{} = transaction_feed_item, params \\ %{}) do
+    transaction_feed_item
+    |> cast(params, [:amount, :data])
+    |> validate_required([:amount, :data])
   end
 end
 {{< /code >}}
 
-The keen eyed among you might notice that with this schema alone we can't enforce the `data` field since its just a `map` type. Ecto will happily accept any map there. Hold tight we will solve that in a moment. The next thing we can tackle is a changeset for the schema.
+We will jump to the implementation of `PolymorphicType` shortly. In the meantime we can soak in what an `Ecto.ParameterizedType` looks like. Parameterized types are a lot like other `Ecto.Type` you might have implemented before. The key difference is that they can accept options that alters their behaviour. In our case we can map a `type` of transaction to a custom `Ecto.Type` that handles it. Essentially saying that one of these types of `Ecto.Type` will reside here.
+
+Lets first implement one of these custom types. I'll go with the `InterestEarnedTransaction`.
 
 {{< code language="elixir" >}}
-def changeset(transaction_feed_item, params \\ %{}) do
-  transaction_feed_item
-  |> cast(params, [:type, :amount, :data])
-  |> validate_required([:type, :amount, :data])
-end
-{{< /code >}}
-
-## Embedded schemas to the rescue
-
-Here is where things get interesting. Ecto has [embedded](https://hexdocs.pm/ecto/Ecto.Schema.html#embedded_schema/1) schemas. These are schemas that are not backed by an actual database table. They are great for using all of Ecto's changeset functionality over html forms, external apis, and as we are about to see Polymorphic records.
-
-Let's go with defining the deposit transaction feed item.
-
-{{< code language="elixir" >}}
-defmodule DepositTransactionFeedItem do
+defmodule InterestEarnedTransaction do
+  use Ecto.Type
   use Ecto.Schema
   alias Ecto.Changeset
-  
+
+  @primary_key false
   embedded_schema do
-    # define common fields
-    field :type, Ecto.Enum, values: [:deposit, :interest_earned]
-    field :amount, :decimal
-    # now some custom fields unique to this type
-    field :initiated_at, :utc_datetime
-    field :completed_at, :utc_datetime
+    field :earn_on, :utc_datetime
+    field :type, Ecto.Enum, values: [:interest]
   end
-end
-{{< /code >}}
 
-And an accompanying changeset for it.
+  @impl Ecto.Type
+  def type(), do: :map
 
-{{< code language="elixir" >}}
-def changeset(deposit_transaction, params \\ %{}) do
-  deposit_transaction
-  |> cast(params, [:amount, :initiated_at, :completed_at])
-  # we know this is the deposit type every time
-  # so we can remove the need to pass it in
-  |> put_change(:type, :deposit)
-  |> validate_required([:type, :amount, :initiated_at, :completed_at])
-end
-{{< /code >}}
+  @impl Ecto.Type
+  def cast(data) do
+    %__MODULE__{}
+    |> Changeset.cast(data, [:earn_date, :type])
+    |> Changeset.put_change(:type, :earn)
+    |> Changeset.validate_required([:earn_date])
+    |> case do
+      %Changeset{valid?: true} = changeset ->
+        {:ok, Changeset.apply_changes(changeset)}
 
-> There is some serious code duplication here but we will come back with a fix for that
-
-So now we have a database table and schema along with an embedded_schema for the unique transaction type. How do we get to where we can persist our unique transaction?
-
-## Transaction feed item behaviour
-
-For all of our unique transaction types we can make them implement a behaviour that can go from the database table schema to them and vice versa. Lets define that behaviour.
-
-{{< code language="elixir" >}}
-defmodule TransactionFeedItem do
-  use Ecto.Schema
-  alias Ecto.Changeset
-  
-  @doc """
-  Go from feed item to a transaction type
-  """
-  @callback from_feed_item(%TransactionFeedItem{}) :: map()
-  
-  @doc """
-  Go from a unique transaction type to a feed item
-  """
-  @callback to_feed_item(map) :: %TransactionFeedItem{}
-  
-  # snip ...
-  # schema and changeset code
-  # snip ...
-end
-{{< /code >}}
-
-Now we can implement this behaviour for our deposit transaction.
-
-{{< code language="elixir" >}}
-defmodule DepositTransactionFeedItem do
-  use Ecto.Schema
-  alias Ecto.Changeset
-  
-  @behaviour TransactionFeedItem
-  
-  @impl TransactionFeedItem
-  def from_feed_item(%TransactionFeedItem{} = feed_item) do
-    # grab unique params from data
-    params = %{
-      initiated_at: feed_item.data.initiated_at,
-      completed_at: feed_item.data.completed_at
-    }
-    
-    # we can use our own changeset to help build our record back up
-    %__MODULE__{
-      id: feed_item.id,
-      amount: feed_item.amount
-    }
-    |> changeset(params)
-    |> apply_changes()
-  end
-  
-  @impl TransactionFeedItem
-  def to_feed_item(%__MODULE__{} = deposit_transaction) do
-    %TransactionFeedItem{
-      id: deposit_transaction.id,
-      amount: deposit_transaction.amount,
-      # nest our unique fields under the json map key
-      data: %{
-        initiated_at: deposit_transaction.initiated_at,
-        completed_at: deposit_transaction.completed_at
-      }
-    }
-  end
-  
-  # snip ...
-  # schema and changeset code
-  # snip ...
-end
-{{< /code >}}
-
-## Final steps
-
-Before we seal the deal and glue this all together let's recap what we have so far. We created a schema for our database table. Next we created an embedded_schema for our unique transaction type. Then we created a behaviour that describes how to go from unique records to the database table and vice versa. Lastly, we implemented the behaviour for our deposit transaction.
-
-All of the pieces are in place now, but a good high level API can help glue it all together. To work with `TransactionFeedItem`s lets create a context module. With this module we can create an API to create, fetch, and update our unique records. Let's work our way through the functions one at a time, starting with the simplest.
-
-
-### Getting a unique transaction by type
-
-Passing in the type and an id we can convert to our type
-
-{{< code language="elixir" >}}
-defmodule TransactionFeedItems do
-  @doc """
-  Get a TransactionFeedItem by id and type
-  """
-  def get(type, id) do
-    case Repo.get(TransactionFeedItem, id) do
-      nil ->
-        nil
-        
-      %TransactionFeedItem{} = item ->
-        # use behaviour to get in correct shape
-        type.from_feed_item(item)
+      _error_changeset ->
+        :error
     end
   end
+
+  @impl Ecto.Type
+  def dump(%__MODULE__{} = module) do
+    {:ok, Map.from_struct(module)}
+  end
+
+  @impl Ecto.Type
+  def load(data) do
+    cast(data)
+  end
 end
 {{< /code >}}
 
-### Inserting a unique transaction
+> You would maybe want to include a `cast/1` implementation that could handle being passed the struct instead of a map - I'll leave that as an exercise to the reader.
 
+To be a custom type `Ecto.Type` we have to implement the `type/0`, `cast/1` `dump/1`, and `load/1` callbacks. These callbacks are mostly for declaring what database type we map to, casting types and checking validity, mapping to a shape the database can handle, and how to load from the database type to our type. I chose to add an embedded_schema to the mix so that we can use all of the `Ecto.Changeset` functions to validate our custom type.
+
+Now how do we wire it up so that we can pass this as a field to our `TransactionFeedItem`. Time for the polymorphic type.
+
+## What we all came to see
+
+Time to implement the parameterized type shown earlier that will give us a polymorphic field. A parameterized type looks a lot like other custom ecto types. The difference is that the options given to the type when used in the schema are passed into some of the callbacks. Also a new `init/1` callback is introduced. It gives us a hook to prepare our params into a shape that is easier to work with in the other callbacks. Our polymorphic type will operate as a high level type that will look into params passed to delegate to the correct type that handles it based on the `type` field.
 
 {{< code language="elixir" >}}
-defmodule TransactionFeedItems do
-  # snip ...
-  # def get(type, id) do
-  # snip ...
-  
-  # handle if given a %TransactionFeedItem{} based changeset
-  def insert(%Changeset{valid?: true, data: %{__struct__: TransactionFeedItem} = changeset}) do
-    Repo.insert(changeset)
+defmodule PolymorphicType do
+  use Ecto.ParameterizedType
+
+  # what database type we are
+  # since we need to store multiple values
+  # we need to be a map - this becomes a jsonb column in Postgres
+  @impl Ecto.ParameterizedType
+  def type(_params), do: :map
+
+  # prepare args for easier pattern matching
+  @impl Ecto.ParameterizedType
+  def init(opts) do
+    Enum.into(opts, %{})
+  end
+
+  # define how we cast when given a struct
+  # we can just delegate to that struct
+  @impl Ecto.ParameterizedType
+  def cast(struct, _types) when is_struct(struct) do
+    struct.__struct__.cast(struct)
+  end
+
+  # define how we cast when given params
+  # in this case we have to look up the type
+  @impl Ecto.ParameterizedType
+  def cast(data, types) do
+    type = type_from(types, data)
+
+    type.cast(data)
+  end
+
+  @impl Ecto.ParameterizedType
+  def dump(struct, _dumper, _types) do
+    struct.__struct__.dump(struct)
+  end
+
+  @impl Ecto.ParameterizedType
+  def load(data, _loader, types) do
+    type = type_from(types, data)
+    type.load(data)
   end
   
-  # we were given a valid custom transaction type
-  # time to do the behaviour to convert it to table schema
-  def insert(%Changeset{valid?: true, data: data} = changeset) do
-    changeset
-    # give us the underlying struct
-    |> Changeset.apply_changes()
-    # convert it to table schema shape
-    |> data.__struct__.to_feed_item()
-    # run it through top level changeset just to double check implemtations
-    |>TransactionFeedItem.changeset()
-    # insert if valid
-    |> Repo.insert()
+  # Helpers for delegating types
+
+  # look up responsible type for params
+  # handle when params are atoms (most likely code is casting)
+  defp type_from(types, %{type: type}) do
+    Map.get(types, type)
   end
-  
-  # for all other cases give back changeset as an error
-  def insert(invalid_changeset), do: {:error, invalid_changeset}
+
+  # look up responsible type for params
+  # handle when params is string keyed (most likely code is loading from db)
+  defp type_from(types, %{"type" => type}) when is_binary(type) do
+    Map.get(types, String.to_existing_atom(type))
+  end
 end
 {{< /code >}}
 
-### Updating a unique transaction
+## With great power
 
-And lastly, the ability to modify a unique transaction. For this to work we send all the fields on the record as changes. This makes sense since most of the fields would end up in the `data` map and we have to replace the whole thing anyways.
+Lets take it for a spin, this code is now possible.
+
+{{< code language="elixir">}}
+%TransactionFeedItem{amount: Decimal.new(100) }
+|> TransactionFeedItem.changeset(%{data: %{type: :interest, earn_date: DateTime.utc_now()})
+|> Repo.insert()
+{{< /code >}}
+
+In this example the `PolymorphicType` will be called to cast the params. It looks it up based on the `type` field and finds that the `InterestEarnedTransaction` type handles the `interest` type. It then delegates to that type. If all is well in the cast it will attempt to insert it into the database.
+
+We don't just get this niceness when inserting into the database. Since it all works with Ecto types we can also query the database and have our type transformed.
 
 {{< code language="elixir" >}}
-defmodule TransactionFeedItems do
-  # snip ...
-  # def get(type, id) do
-  # def insert(...) do
-  # snip ...
-  
-  # handle if given a TransactionFeedItem to udpate
-  def update(%Changeset{data: %{__struct__: TransactionFeedItem}} = changeset) do
-    Repo.update(changeset)
-  end
-  
-  def update(%Changeset{valid?: true, data: data} = changeset) do
-    # take all of the fields as changes
-    changes = changeset
-    |> Changeset.apply_changes()
-    |> data.__struct__.to_feed_item()
-    |> Map.from_struct()
-    
-    %TransactionFeedItem{id: changes.id}
-    |> TransactionFeedItem.changeset(changes)
-    |> Repo.update()
-  end
-end
+iex> Repo.all(TransactionFeedItem)
+[
+  %TransactionFeedItem{
+    mount: Decimal.new(100),
+    data: %InterestEarnedTransaction{
+      type: :interest,
+      earn_date: %DateTime{}
+  }
 {{< /code >}}
 
-## Extra steps
-
-Whew that was a lot of details to get out. What we have above works but as I mentioned there is some code duplication that we can take care of to make this even easier to work with.
-
-One of the issues we have is around defining the embedded_schema. They are responsible for defining all the shared fields as well as the ones they want to add. If down the line we need to add a new shared field you would need to go to all of their schemas and include that field. This could be especially bad given the `type` Enum might be defined all over the place. Also we are forcing them to verify in their changesets that the shared fields have been supplied. Surely we can provide more helpers to solve these issues.
-
-Starting with creation of schemas we can use a simple macro to make defining them easier. Basically defining the shared fields for them and letting them add the custom fields they need.
-
-{{< code language="elixir" >}}
-defmodule TransactionFeedItem do
-  defmacro new_transaction_item(do: block) do
-    quote do
-      use Ecto.Schema
-      
-      embedded_schema do
-        # inject their custom fields
-        unquote(block)
-        
-        # now add all shared fields
-        field :type, Ecto.Enum, values: [:deposit, :interest_earned]
-        field :amount, :decimal
-      end
-    end
-  end
-end
-{{< /code >}}
-
-This means we can now define our scheme in the deposit module as:
-
-{{< code language="elixir" >}}
-defmodule DepositTransactionFeedItem do
-  alias Ecto.Changeset
-  
-  # get access to macro
-  require TransactionFeedItem 
-  
-  TransactionFeedItem.new_transaction_item do
-    field :initiated_at, :utc_datetime
-    field :completed_at, :utc_datetime
-  end
-end
-{{< /code >}}
-
-Okay now for the changesets. We can create helper functions that check for only the required fields which our unique transactions can use in their changesets
-
-{{< code language="elixir" >}}
-defmodule TransactionFeedItem do
-  def cast_shared(data, params \\ %{}) do
-    cast(data, params, [:type, :amount])
-  end
-  
-  def validate_required_shared(changeset) do
-    validate_required(changeset, [:type, :amount])
-  end
-end
-{{< /code >}}
-
-This would make our `DepositTransactionFeedItem` changeset now be able to look like this.
-
-{{< code language="elixir" >}}
-defmodule DepositTransactionFeedItem do
-  def changeset(deposit_transaction, params \\ %{}) do
-    deposit_transaction
-    # cast shared params
-    |> TransactionFeedItem.cast_shared()
-    # cast our unique params
-    |> cast(params, [:initiated_at, :completed_at])
-    |> put_change(:type, :deposit)
-    # validate required shared
-    |> TransactionFeedItem.validate_required_shared()
-    # validate our unique fields
-    |> validate_required([:initiated_at, :completed_at])
-  end
-end
-{{< /code >}}
+Elixir you never cease to amaze me!
 
 ## Did we make it?
 
@@ -340,12 +203,11 @@ Lets loop back on the original goals we had set for ourselves to see how we meas
   - We do need to make sure we have a good pagination strategy in place for this though
 - [x] Each transaction line item has its own enforceable schema
 - [x] New activity items can be added to the feed without needing changes to the database
-  - Add your type to the `type` Enum
+  - Implement new custom `Ecto.Type`
   - Implement the callbacks
-  - No database changes needed
+  - Add type as option to the `PolymorphicType`
 - [x] Use the Ecto patterns we already know and love
-- [x] In Elixir - No trade offs here :)
-
+- [x] In Elixir
 
 ---
 
@@ -361,3 +223,7 @@ We are also moving some computation of parsing these schemas into our Elixir cod
 ### Share-ability
 
 If the database is being shared and moved to other sources there is a shape mismatch between our database and our in memory structures.
+
+### Querying
+
+When you receive back a record from the database it will be perfectly parsed into your types, but when building queries that filter on these custom fields you will need to do json queries since the native type in the database are jsonb columns.
