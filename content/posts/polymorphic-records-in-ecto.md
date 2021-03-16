@@ -1,7 +1,7 @@
 ---
 title: "Polymorphic Records in Ecto"
 date: 2021-03-15T12:25:10-07:00
-draft: true
+draft: false
 ---
 
 Parameterized types landed in Ecto [3.5](https://twitter.com/josevalim/status/1300448536681684992?ref_src=twsrc%5Etfw%7Ctwcamp%5Etweetembed%7Ctwterm%5E1300448536681684992%7Ctwgr%5E%7Ctwcon%5Es1_c10&ref_url=https%3A%2F%2Fpublish.twitter.com%2F%3Fquery%3Dhttps3A2F2Ftwitter.com2Fjosevalim2Fstatus2F1300448536681684992widget%3DTweet) and with them some new magical powers for us alchemists. My favorite being polymorphic types. What are polymorphic types you ask?
