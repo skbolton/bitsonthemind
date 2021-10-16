@@ -12,6 +12,7 @@ paginate = 5
 
   # "light" or "dark"
   defaultTheme = "dark"
+  EnableThemeToggle = true
 
   # if you set this to 0, only submenu trigger will be visible
   showMenuItems = 2
@@ -52,7 +53,8 @@ paginate = 5
       series   = "series"
 
     [languages.en.params.logo]
-      logoText = "$ cd /home/"
+      logoMark = "$"
+      logoText = "cd /home/"
       logoHomeLink = "/"
     # or
     #
