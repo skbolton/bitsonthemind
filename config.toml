@@ -31,7 +31,7 @@ paginate = 5
 [languages]
   [languages.en]
     title = "Stephen Bolton"
-    subtitle = "Software Engineer // Productivity Geek"
+    homeSubtitle = "Software Engineer // Productivity Geek"
     keywords = ""
     copyright = ""
     menuMore = "Show more"
@@ -46,6 +46,11 @@ paginate = 5
     # leave empty to disable, enter display text to enable
     # lastModDisplay = ""
 
+    [taxonomies]
+      category = "blog"
+      tag      = "tags"
+      series   = "series"
+
     [languages.en.params.logo]
       logoText = "$ cd /home/"
       logoHomeLink = "/"
@@ -57,6 +62,22 @@ paginate = 5
     identifier = "blog"
     name = "Blog"
     url = "/posts"
+
+  [[params.social]]
+    name = "github"
+    url = "https://github.com/skbolton"
+
+  [[params.social]]
+    name = "email"
+    url = "mailto:stephen@bitsonthemind.com"
+
+  [[params.social]]
+    name = "twitter"
+    url = "https://twitter.com/skbolton"
+
+  [[params.social]]
+    name = "linkedin"
+    url = "https://linkedin.com/in/skbolton"
 
 [markup]
   [markup.highlight]
