@@ -26,6 +26,7 @@ paginate = 5
   # Show full page content in RSS feed items
   #(default is Description or Summary metadata in the front matter)
   # rssFullText = true
+  customCSS = ["/css/one-dark.css", "/css/theme-overrides.css"]
 
 [languages]
   [languages.en]
@@ -46,7 +47,7 @@ paginate = 5
     # lastModDisplay = ""
 
     [languages.en.params.logo]
-      logoText = ">$ cd /home/"
+      logoText = "$ cd /home/"
       logoHomeLink = "/"
     # or
     #
