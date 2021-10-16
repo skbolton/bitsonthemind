@@ -31,7 +31,7 @@ We don't want to be too aggressive on deciding what fields are shared between al
 
 Next, we need a way to have a field that can be any one of our transaction types. We could just define it as a `:map` and call it a day but there are some issues with that. For one, our unique transaction types are not just loose key value pairs. They probably have some sort of schema, just not one we can enforce at the database level. Instead we will define a polymorphic type.
 
-{{< code language="elixir" >}}
+``` elixir
 defmodule TransactionFeedItem do
   use Ecto.Schema
   alias Ecto.Changeset
@@ -49,13 +49,13 @@ defmodule TransactionFeedItem do
     |> validate_required([:amount, :data])
   end
 end
-{{< /code >}}
+```
 
 We will jump to the implementation of `PolymorphicType` shortly. In the meantime we can soak in what an `Ecto.ParameterizedType` looks like. Parameterized types are a lot like other `Ecto.Type` you might have implemented before. The key difference is that they can accept options that alters their behaviour. In our case we can map a `type` of transaction to a custom `Ecto.Type` that handles it. Essentially saying that one of these types of `Ecto.Type` will reside here.
 
 Lets first implement one of these custom types. I'll go with the `InterestEarnedTransaction`.
 
-{{< code language="elixir" >}}
+``` elixir
 defmodule InterestEarnedTransaction do
   use Ecto.Type
   use Ecto.Schema
@@ -95,7 +95,7 @@ defmodule InterestEarnedTransaction do
     cast(data)
   end
 end
-{{< /code >}}
+```
 
 > You would maybe want to include a `cast/1` implementation that could handle being passed the struct instead of a map - I'll leave that as an exercise to the reader.
 
@@ -107,7 +107,7 @@ Now how do we wire it up so that we can pass this as a field to our `Transaction
 
 Time to implement the parameterized type shown earlier that will give us a polymorphic field. A parameterized type looks a lot like other custom ecto types. The difference is that the options given to the type when used in the schema are passed into some of the callbacks. Also a new `init/1` callback is introduced. It gives us a hook to prepare our params into a shape that is easier to work with in the other callbacks. Our polymorphic type will operate as a high level type that will look into params passed to delegate to the correct type that handles it based on the `type` field.
 
-{{< code language="elixir" >}}
+``` elixir
 defmodule PolymorphicType do
   use Ecto.ParameterizedType
 
@@ -164,23 +164,23 @@ defmodule PolymorphicType do
     Map.get(types, String.to_existing_atom(type))
   end
 end
-{{< /code >}}
+```
 
 ## With great power
 
 Lets take it for a spin, this code is now possible.
 
-{{< code language="elixir">}}
+``` elixir
 %TransactionFeedItem{amount: Decimal.new(100) }
 |> TransactionFeedItem.changeset(%{data: %{type: :interest, earn_date: DateTime.utc_now()})
 |> Repo.insert()
-{{< /code >}}
+```
 
 In this example the `PolymorphicType` will be called to cast the params. It looks it up based on the `type` field and finds that the `InterestEarnedTransaction` type handles the `interest` type. It then delegates to that type. If all is well in the cast it will attempt to insert it into the database.
 
 We don't just get this niceness when inserting into the database. Since it all works with Ecto types we can also query the database and have our type transformed.
 
-{{< code language="elixir" >}}
+``` elixir
 iex> Repo.all(TransactionFeedItem)
 [
   %TransactionFeedItem{
@@ -189,7 +189,7 @@ iex> Repo.all(TransactionFeedItem)
       type: :interest,
       earn_date: %DateTime{}
   }
-{{< /code >}}
+```
 
 Elixir you never cease to amaze me!
 
