@@ -2,7 +2,7 @@ baseURL = "https://blog.bitsonthemind.com"
 languageCode = "en-us"
 title = "Bits on the Mind"
 
-theme = "hello-friend"
+theme = "hello-friend-ng"
 paginate = 5
 
 [params]
@@ -29,8 +29,8 @@ paginate = 5
 
 [languages]
   [languages.en]
-    title = "Bits on the Mind"
-    subtitle = ""
+    title = "Stephen Bolton"
+    subtitle = "Software Engineer // Productivity Geek"
     keywords = ""
     copyright = ""
     menuMore = "Show more"
