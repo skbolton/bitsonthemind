@@ -1,22 +1,23 @@
-body {
+[data-theme="dark"] body {
   background-color: #1e1c31;
   color: #cbe3e7;
 }
 
-.header {
+[data-theme="dark"] .header {
   background-color: #100e23;
 }
 
-.menu {
+[data-theme="dark"] .menu {
   background-color: #100e23;
+}
+
+
+[data-theme="dark"] .logo__cursor {
+  background: #a1efd3;
+  height: 1.125rem;
 }
 
 .logo {
   display: flex;
   align-items: flex-start;
-}
-
-.logo__cursor {
-  background: #a1efd3;
-  height: 1.125rem;
 }
