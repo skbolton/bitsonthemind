@@ -1,0 +1,22 @@
+body {
+  background-color: #1e1c31;
+  color: #cbe3e7;
+}
+
+.header {
+  background-color: #100e23;
+}
+
+.menu {
+  background-color: #100e23;
+}
+
+.logo {
+  display: flex;
+  align-items: flex-start;
+}
+
+.logo__cursor {
+  background: #a1efd3;
+  height: 1.125rem;
+}
