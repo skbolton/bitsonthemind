@@ -14,10 +14,5 @@
 
 [data-theme="dark"] .logo__cursor {
   background: #a1efd3;
-  height: 1.125rem;
 }
 
-.logo {
-  display: flex;
-  align-items: flex-start;
-}

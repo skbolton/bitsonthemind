@@ -47,6 +47,8 @@ pre[class*="language-"] {
 	-moz-hyphens: none;
 	-ms-hyphens: none;
 	hyphens: none;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Selection */
