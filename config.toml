@@ -62,7 +62,7 @@ paginate = 5
     # alt = "Your example logo alt text"
   [[menu.main]]
     identifier = "pages"
-    name = "All"
+    name = "Blog"
     url = "/posts"
 
   [[menu.main]]
