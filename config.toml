@@ -32,7 +32,7 @@ paginate = 5
 [languages]
   [languages.en]
     title = "Stephen Bolton"
-    homeSubtitle = "Software Engineer // Productivity Geek"
+    homeSubtitle = "Software Engineer // Productivity Hacker"
     keywords = ""
     copyright = ""
     menuMore = "Show more"
