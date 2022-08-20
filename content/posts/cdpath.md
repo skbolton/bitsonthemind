@@ -15,7 +15,7 @@ really questioning it. But the fact of the matter is that its an action worth
 optimizing.
 
 Here is the thing, out of all the directories we cd in and out of most of them
-are mostly likely common directories that we probably work with a lot. It would
+are most likely common directories that we probably work with a lot. It would
 be nice if there was a way to jump to them more quickly. Sure we could define an
 alias that takes us right to a directory but unix has a better solution. Enter
 the `CDPATH`.
