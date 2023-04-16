@@ -17,7 +17,7 @@ dateFormat = "2 January 2006"
 [author]
   name = "Stephen Bolton"
   image = "img/avatar.png"
-  headline = "Software Engineer // Productivity Procrastinator"
+  headline = "Software Engineer // NerdFont Enjoyer // Productivity Geek"
   # bio = "A little bit about you"
   links = [
     { email = "mailto:stephen@bitsonthemind.com" },
