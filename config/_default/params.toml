@@ -9,8 +9,8 @@ colorScheme = "congo"
 defaultAppearance = "light" # valid options: light or dark
 autoSwitchAppearance = true
 
-enableSearch = true
-enableCodeCopy = true
+enableSearch = false
+enableCodeCopy = false
 
 # robots = ""
 
@@ -20,13 +20,13 @@ enableCodeCopy = true
   showTitle = true
 
 [footer]
-  showCopyright = false
+  showCopyright = true
   showThemeAttribution = true
-  showAppearanceSwitcher = true
+  showAppearanceSwitcher = false
   showScrollToTop = true
 
 [homepage]
-  layout = "profile" # valid options: page, profile, custom
+  layout = "page" # valid options: page, profile, custom
   showRecent = false
   recentLimit = 5
 
@@ -43,17 +43,17 @@ enableCodeCopy = true
   showPagination = true
   invertPagination = false
   showReadingTime = true
-  showTableOfContents = true
-  showTaxonomies = true
-  showWordCount = true
+  showTableOfContents = false
+  showTaxonomies = false
+  showWordCount = false
   showComments = false
   # sharingLinks = ["facebook", "twitter", "mastodon", "pinterest", "reddit", "linkedin", "email"]
 
 [list]
-  showBreadcrumbs = true
-  showSummary = true
+  showBreadcrumbs = false
+  showSummary = false
   showTableOfContents = false
-  showTaxonomies = true
+  showTaxonomies = false
   groupByYear = true
   paginationWidth = 1
 
