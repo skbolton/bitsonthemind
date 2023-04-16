@@ -16,7 +16,7 @@ enableCodeCopy = true
 
 [header]
   layout = "hybrid" # valid options: basic, hamburger, hybrid, custom
-  # logo = "img/logo.jpg"
+  logo = "img/brain.png"
   showTitle = true
 
 [footer]
