@@ -14,7 +14,6 @@ sed 's/pattern/replacement/options'
 
 Turns out you can use whatever separator you want. This is incredibly handy if the pattern you are substituting contains
 slashes - such as urls. By selecting a different separator all of the escaping can be avoided.
-do.
 
 **Without custom separator - lots of escaping**
 ```bash
