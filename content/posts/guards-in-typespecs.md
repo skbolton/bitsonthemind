@@ -5,6 +5,7 @@ draft: false
 toc: false
 summary: Using guard clauses in Typespecs to progressively define the types
 tags: [elixir, til]
+showTableOfContents: false
 categories: [programming]
 ---
 

@@ -4,6 +4,7 @@ date: 2023-01-29T13:32:24-04:00
 draft: false
 tags: [til]
 categories: [programming]
+showTableOfContents: false
 ---
 
 When using `sed` for a substitution I was under the impression that `/` had to be used as a separator for the segments.
