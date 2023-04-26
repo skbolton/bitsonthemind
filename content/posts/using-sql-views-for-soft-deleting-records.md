@@ -11,8 +11,8 @@ draft = false
 
 > **Soft Deletion:** A way of marking a record as deleted actually deleting anything and losing data
 
-When casually messing aroung with SQL you have all the CRUD operations available
-available to you. Have fun with this power while it lasts because in real world
+When casually messing aroung with SQL you have all the CRUD operations at your
+fingertips. Have fun with this power while it lasts because in real world
 applications you will rarely get the chance to delete anything. More often than
 not you will hear messaging that deleting is an a [anti-pattern](https:www.infoq.com/news/2009/09/Do-Not-Delete-Data/).
 
