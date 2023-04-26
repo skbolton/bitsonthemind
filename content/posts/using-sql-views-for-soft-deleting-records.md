@@ -9,7 +9,7 @@ draft = false
 
 ## Using SQL views to manage soft deletes {#using-sql-views-to-manage-soft-deletes}
 
-> **Soft Deletion:** A way of marking a record as deleted actually deleting anything and losing data
+> **Soft Deletion:** A way of marking a record as deleted without actually deleting anything.
 
 When casually messing aroung with SQL you have all the CRUD operations at your
 fingertips. Have fun with this power while it lasts because in real world
